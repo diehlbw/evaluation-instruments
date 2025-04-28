@@ -113,7 +113,7 @@ Read the following CLINICAL_NOTES. They were used to create a CLINICAL_SUMMARY.
 {prompt_notes}
 <\\CLINICAL_NOTES>
 
-Read the following CLINICAL_SUMMARY, which is a summary of the above CLINICAL_NOTES for a clinician with specialty {target_specialty}. Your task is to grade this CLINICAL_SUMMARY.
+Read the following CLINICAL_SUMMARY, which is a summary of the above CLINICAL_NOTES for a clinician with specialty {specialty}. Your task is to grade this CLINICAL_SUMMARY.
 
 <CLINICAL_SUMMARY>
 {summary_to_evaluate}
@@ -144,7 +144,9 @@ You are an expert grading machine, for summaries of clinical notes.
 # fmt: on
 import json
 
+from evaluation_instruments.prep import json_from_column, to_user_messages
 
+@json_from_column(namedtuple_key="guid")
 def pdsqi_from_file(sample: "namedtuple") -> list[dict]:
     """
     Main function to resolve a prompt for PDSQI-9 evaluation from an entity-specific file.
@@ -158,20 +160,19 @@ def pdsqi_from_file(sample: "namedtuple") -> list[dict]:
     list[dict]
         The message array to send to the generative model
     """
-    with open(f"{sample.guid}.json", "r") as file:
-        raw_json = json.load(file)
-
     summary = raw_json["summary"]
+    specialty = raw_json.get("target_specialty", "general")
     notes = list(raw_json["notes"].values())
     timestamps = update_null_data(notes, None)
 
     if not validate_inputs(notes, timestamps):
         raise InputError("Input Error: notes and timestamps must be parallel lists.")
 
-    return resolve_prompt(summary, notes, timestamps)
+    return resolve_prompt(summary, specialty, notes, timestamps)
 
 
-def resolve_prompt(summary_to_evaluate: str, notes: list[str], timestamps: list | None) -> list[dict]:
+@to_user_messages(system_message=SYSTEM_PROMPT)
+def resolve_prompt(summary_to_evaluate: str, specialty: str, notes: list[str], timestamps: list | None) -> list[dict]:
     """
     Resolves the prompt for PDSQI-9 evaluation.
 
@@ -194,10 +195,10 @@ def resolve_prompt(summary_to_evaluate: str, notes: list[str], timestamps: list 
     )
 
     prompt = BASE_PROMPT_PATTERN.format(
-        prompt_notes=prompt_notes, summary_to_evaluate=summary_to_evaluate, RUBRIC_SET=RUBRIC_SET
+        prompt_notes=prompt_notes, specialty=specialty, summary_to_evaluate=summary_to_evaluate, RUBRIC_SET=RUBRIC_SET
     )
 
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
+    return prompt
 
 
 def validate_inputs(notes: list, timestamps: list) -> bool:
