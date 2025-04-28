@@ -113,7 +113,7 @@ Read the following CLINICAL_NOTES. They were used to create a CLINICAL_SUMMARY.
 {prompt_notes}
 <\\CLINICAL_NOTES>
 
-Read the following CLINICAL_SUMMARY, which is a summary of the above CLINICAL_NOTES. Your task is to grade this CLINICAL_SUMMARY.
+Read the following CLINICAL_SUMMARY, which is a summary of the above CLINICAL_NOTES for a clinician with specialty {target_specialty}. Your task is to grade this CLINICAL_SUMMARY.
 
 <CLINICAL_SUMMARY>
 {summary_to_evaluate}
